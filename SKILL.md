@@ -147,6 +147,56 @@ na-analytics profitability --cost-brl-ha 4500 --base-productivity 55 --base-pric
 ```
 Options: `--cost-brl-ha` (required), `--base-productivity` (required), `--base-price-brl-sc` (required), `--prod-steps`, `--price-steps`, `--prod-range-pct`, `--price-range-pct`
 
+## Beyond Pre-Built Commands: Raw Data Access
+
+The 11 commands above cover the most common analytics. But agents can also query the raw data directly for any analysis the user asks for — the data supports it.
+
+**How:** Import `na_analytics.data` and run arbitrary DuckDB SQL over the cached CSVs.
+
+```python
+# In a Python script or agent-generated code:
+from na_analytics.data import load_commodity, load_basis, query
+
+# Load any commodity CSV into DuckDB
+load_commodity("soja")
+
+# Run any SQL — full DuckDB syntax (window functions, CTEs, aggregations)
+rows = query("""
+    SELECT date, location, value
+    FROM soja
+    WHERE indicator = 'soja-mercado-fisico-sindicatos-e-cooperativas'
+      AND measure = 'price' AND date >= '2024-01-01'
+    ORDER BY date DESC, value DESC
+    LIMIT 50
+""")
+```
+
+**CSV schema (17 columns):**
+```
+date, commodity, indicator, indicator_name, location, contract_month,
+column_name, value, value_raw, unit, measure, currency, unit_std,
+price_basis, contract, state, market_type
+```
+
+**Basis CSV schema (13 columns):**
+```
+date, location, state, physical_indicator, physical_price_brl,
+futures_indicator, futures_contract, futures_price_raw, futures_price_brl,
+ptax, basis_brl, basis_usd, basis_pct
+```
+
+**Key filters:**
+- `price_basis`: `spot` (physical) or `futures`
+- `measure`: `price`, `change_pct`, `change_abs`
+- `column_name`: `preco`, `fechamento`, `valor`, `variacao_pct`
+- `market_type`: `physical`, `b3`, `cme`, `indicator`
+
+**Available commodities:** soja, milho, cafe, boi-gordo, trigo, algodao, arroz, sucroenergetico, mercado-financeiro, and 14 more. Run `list-indicators --commodity X` to see all indicators.
+
+**Basis CSVs:** basis-soja, basis-milho, basis-cafe, basis-boi-gordo, basis-trigo, basis-algodao.
+
+If the user asks for any analysis that the course material covers and the data supports, the agent should explore the data schema, find the right indicators, and compute it — even if no pre-built command exists.
+
 ## Anti-Goals
 
 - Does NOT provide trade recommendations — analytics only, the human decides
