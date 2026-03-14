@@ -8,10 +8,18 @@
 
 ## Install
 
+**macOS / Linux:**
 ```bash
 git clone https://github.com/FrancyJGLisboa/na-analytics
 cd na-analytics
 ./na-analytics list-indicators --commodity soja   # just works
+```
+
+**Windows (PowerShell):**
+```powershell
+git clone https://github.com/FrancyJGLisboa/na-analytics
+cd na-analytics
+.\na-analytics.ps1 list-indicators --commodity soja   # just works
 ```
 
 That's it. The first run auto-installs Python dependencies (`click`, `duckdb`). No manual setup.
