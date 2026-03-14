@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Self-bootstrapping wrapper: clone the repo, run this file. That's it.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Bootstrap on first run
+if [ ! -d "$SCRIPT_DIR/.venv" ]; then
+    echo "na-analytics: first run — installing dependencies..." >&2
+
+    # Check Python
+    if ! command -v python3 &>/dev/null; then
+        echo "ERROR: Python 3.10+ required." >&2
+        case "$(uname -s)" in
+            Darwin) echo "  brew install python" >&2 ;;
+            Linux)  echo "  sudo apt install python3" >&2 ;;
+            *)      echo "  Install from https://python.org" >&2 ;;
+        esac
+        exit 1
+    fi
+
+    # Check/install uv
+    if ! command -v uv &>/dev/null; then
+        echo "  Installing uv (Python package manager)..." >&2
+        curl -LsSf https://astral.sh/uv/install.sh | sh 2>/dev/null
+        export PATH="$HOME/.local/bin:$PATH"
+    fi
+
+    # Create venv + install
+    cd "$SCRIPT_DIR"
+    uv venv --python python3 --quiet 2>/dev/null
+    uv pip install -e . --quiet 2>/dev/null || uv pip install -e .
+    echo "na-analytics: ready." >&2
+    echo "" >&2
+fi
+
+# Run the CLI
+cd "$SCRIPT_DIR"
+exec uv run na-analytics "$@"
