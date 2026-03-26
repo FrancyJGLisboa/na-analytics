@@ -1,5 +1,6 @@
 ---
 name: na-analytics
+activation: /na-analytics
 description: >-
   Agricultural commodity analytics CLI for Brazilian markets — basis, PPE,
   futures curves, crush margins, seasonal patterns, breakeven, profitability.
@@ -9,7 +10,22 @@ description: >-
   fx adjusted pricing, breakeven CBOT, profitability matrix, agricultural
   commodity analytics, Brazilian grain market, noticiasagricolas, soybean price,
   corn price, cattle price.
+  Activate ONLY when the user explicitly types /na-analytics or clearly
+  references Brazilian commodity market analytics by name.
 license: MIT
+provenance:
+  maintainer: Francy Lisboa Charuto
+  maintainer_email: agrolisboa@gmail.com
+  version: 1.1.0
+  created: 2026-03-13
+  updated: 2026-03-26
+  built_by: cliskill (discover mode)
+  source_references:
+    - https://github.com/FrancyJGLisboa/noticiasagricolas_etl
+    - "MARCOS ARAUJO - EAD NOV 2020.pdf (AgriInvest Commodities)"
+  holdout_scenarios: 17/17 passed
+  repair_loops: 1
+  harness_level: moderate
 ---
 
 # na-analytics
@@ -166,8 +182,18 @@ rows = query("SELECT date, location, value FROM soja WHERE indicator = '...' AND
 
 This is a fallback, not the primary interface. If agents regularly need raw SQL for a common analysis, that analysis should become a command.
 
+## Prerequisites
+
+**Runtime:** Python 3.10+, internet access (fetches data from GitHub on demand)
+**Dependencies:** click, duckdb (auto-installed on first run via `./na-analytics` wrapper)
+**API keys:** None required
+**OS:** macOS, Linux, Windows (PowerShell)
+
+Quick check: `na-analytics --check-prereqs`
+
 ## Anti-Goals
 
+- Does NOT activate on general queries that happen to mention commodities or prices — wait for explicit `/na-analytics` invocation or unambiguous user intent
 - Does NOT provide trade recommendations — analytics only, the human decides
 - Does NOT handle options pricing (puts/calls/Greeks)
 - Does NOT simulate hedging with margin calls

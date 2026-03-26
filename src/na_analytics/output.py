@@ -16,9 +16,11 @@ def success(data: dict) -> None:
     print(json.dumps(data, default=_default, ensure_ascii=False))
 
 
-def error(message: str, hint: str | None = None, exit_code: int = 1) -> None:
-    payload = {"error": message}
+def error(message: str, hint: str | None = None, errors: list | None = None, exit_code: int = 1) -> None:
+    payload = {"error": message, "error_type": "validation" if errors else "runtime"}
     if hint:
         payload["hint"] = hint
-    print(json.dumps(payload, ensure_ascii=False), file=sys.stderr)
+    if errors:
+        payload["details"] = errors
+    print(json.dumps(payload, default=_default, ensure_ascii=False), file=sys.stderr)
     sys.exit(exit_code)

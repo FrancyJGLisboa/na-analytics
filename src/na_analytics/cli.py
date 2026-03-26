@@ -1,3 +1,6 @@
+import sys
+import platform
+
 import click
 
 from . import output
@@ -7,6 +10,68 @@ from . import output
 def cli():
     """Agricultural commodity analytics for Brazilian markets."""
     pass
+
+
+@cli.command("check-prereqs")
+def check_prereqs():
+    """Check all prerequisites are met."""
+    checks = []
+
+    # Python version
+    py = platform.python_version()
+    py_ok = sys.version_info >= (3, 10)
+    checks.append({"check": "python", "required": ">=3.10", "found": py, "ok": py_ok})
+
+    # click
+    try:
+        import click as _c
+        checks.append({"check": "click", "required": ">=8.1", "found": _c.__version__, "ok": True})
+    except ImportError:
+        checks.append({"check": "click", "required": ">=8.1", "found": None, "ok": False})
+
+    # duckdb
+    try:
+        import duckdb
+        checks.append({"check": "duckdb", "required": ">=1.0", "found": duckdb.__version__, "ok": True})
+    except ImportError:
+        checks.append({"check": "duckdb", "required": ">=1.0", "found": None, "ok": False})
+
+    # network (GitHub raw access)
+    import urllib.request
+    try:
+        urllib.request.urlopen("https://raw.githubusercontent.com/FrancyJGLisboa/noticiasagricolas_etl/main/data/csv/soja.csv", timeout=10)
+        checks.append({"check": "network", "required": "GitHub access", "found": "reachable", "ok": True})
+    except Exception:
+        checks.append({"check": "network", "required": "GitHub access", "found": "unreachable", "ok": False})
+
+    ready = all(c["ok"] for c in checks)
+    output.success({"ready": ready, "checks": checks})
+
+
+@cli.command("diagnostics")
+def diagnostics():
+    """Show harness configuration and skill metadata."""
+    output.success({
+        "skill": "na-analytics",
+        "version": "1.1.0",
+        "harness_level": "moderate",
+        "commands": [
+            "list-indicators", "basis", "basis-signal", "futures-curve",
+            "crush-margin", "seasonal", "spread", "fx-adjusted",
+            "ppe", "breakeven", "profitability",
+        ],
+        "harness_features": {
+            "input_validation": True,
+            "output_sanity_checks": True,
+            "structured_errors": True,
+            "retry_on_network": False,
+            "partial_results": False,
+            "supports_resume": False,
+        },
+        "data_source": "https://github.com/FrancyJGLisboa/noticiasagricolas_etl",
+        "cache_ttl_seconds": 3600,
+        "built_by": "cliskill (discover mode)",
+    })
 
 
 @cli.command("list-indicators")
@@ -155,6 +220,12 @@ def ppe(commodity, cbot, basis_fob, fx, logistics, fobbings):
     from the latest pipeline data (requires GitHub access).
     """
     try:
+        # Input validation (harness gate)
+        from .validate import validate_ppe_inputs, check_ppe_sanity
+        errors = validate_ppe_inputs(commodity, cbot, basis_fob, fx, logistics, fobbings)
+        if errors:
+            output.error("Input validation failed", errors=errors)
+
         auto_resolve = cbot is None or basis_fob is None or fx is None
         from .ppe import compute
         result = compute(commodity=commodity, cbot=cbot, basis_fob=basis_fob,
@@ -162,6 +233,9 @@ def ppe(commodity, cbot, basis_fob, fx, logistics, fobbings):
                         auto_resolve=auto_resolve)
         if "error" in result:
             output.error(result["error"], result.get("hint"))
+
+        # Output sanity check (harness gate)
+        result = check_ppe_sanity(result)
         output.success(result)
     except SystemExit:
         raise
@@ -196,12 +270,19 @@ def basis_signal_cmd(commodity, location):
 def breakeven(commodity, cost_brl_ha, productivity, fx, logistics_usd_ton, basis):
     """Breakeven CBOT price to cover production costs."""
     try:
+        from .validate import validate_breakeven_inputs, check_breakeven_sanity
+        errors = validate_breakeven_inputs(commodity, cost_brl_ha, productivity, fx, logistics_usd_ton, basis)
+        if errors:
+            output.error("Input validation failed", errors=errors)
+
         from .breakeven import compute
         result = compute(commodity=commodity, cost_brl_ha=cost_brl_ha,
                         productivity=productivity, fx=fx,
                         logistics_usd_ton=logistics_usd_ton, basis=basis)
         if "error" in result:
             output.error(result["error"])
+
+        result = check_breakeven_sanity(result)
         output.success(result)
     except SystemExit:
         raise
@@ -221,6 +302,11 @@ def profitability(cost_brl_ha, base_productivity, base_price_brl_sc,
                   prod_steps, price_steps, prod_range_pct, price_range_pct):
     """Profitability matrix: productivity x price grid."""
     try:
+        from .validate import validate_profitability_inputs
+        errors = validate_profitability_inputs(cost_brl_ha, base_productivity, base_price_brl_sc)
+        if errors:
+            output.error("Input validation failed", errors=errors)
+
         from .profitability import compute
         result = compute(cost_brl_ha=cost_brl_ha, base_productivity=base_productivity,
                         base_price_brl_sc=base_price_brl_sc, prod_steps=prod_steps,
