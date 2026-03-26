@@ -55,24 +55,41 @@ def _fetch_csv(name: str) -> Path:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     url = f"{GITHUB_RAW}/{name}.csv"
 
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "na-analytics/1.0"})
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            content = resp.read()
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
+    max_retries = 3
+    last_error = None
+    for attempt in range(max_retries + 1):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "na-analytics/1.0"})
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                content = resp.read()
+            break  # success
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                from . import output
+                output.error(
+                    f"CSV not found: {name}.csv",
+                    hint=f"Valid commodities: {', '.join(VALID_COMMODITIES)}",
+                )
+            if e.code in (429, 500, 502, 503) and attempt < max_retries:
+                import time
+                time.sleep(2 ** attempt)
+                last_error = e
+                continue
+            from . import output
+            output.error(f"GitHub fetch error: {e.code}", hint=str(e.reason))
+        except urllib.error.URLError as e:
+            if attempt < max_retries:
+                import time
+                time.sleep(2 ** attempt)
+                last_error = e
+                continue
+            if _cache_path(name).exists():
+                return _cache_path(name)
             from . import output
             output.error(
-                f"CSV not found: {name}.csv",
-                hint=f"Valid commodities: {', '.join(VALID_COMMODITIES)}",
+                f"Cannot reach GitHub after {max_retries + 1} attempts and no cached data",
+                hint="Check internet connection.",
             )
-        from . import output
-        output.error(f"GitHub fetch error: {e.code}", hint=str(e.reason))
-    except urllib.error.URLError:
-        if _cache_path(name).exists():
-            return _cache_path(name)
-        from . import output
-        output.error("Cannot reach GitHub and no cached data", hint="Check internet connection.")
 
     csv_path = _cache_path(name)
     csv_path.write_bytes(content)

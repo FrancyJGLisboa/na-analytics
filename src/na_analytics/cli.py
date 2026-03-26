@@ -64,7 +64,7 @@ def diagnostics():
             "input_validation": True,
             "output_sanity_checks": True,
             "structured_errors": True,
-            "retry_on_network": False,
+            "retry_on_network": True,
             "partial_results": False,
             "supports_resume": False,
         },
