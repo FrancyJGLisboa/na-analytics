@@ -49,9 +49,24 @@ def compute(
     """
     rows = data.query(sql)
 
+    complete = []
+    incomplete = []
     for row in rows:
         row["date"] = str(row["date"])
         if row["crush_margin"] is not None:
             row["crush_margin"] = round(row["crush_margin"], 4)
+            complete.append(row)
+        else:
+            missing = []
+            if row["farelo_price"] is None:
+                missing.append("farelo")
+            if row["oleo_price"] is None:
+                missing.append("oleo")
+            row["_missing"] = missing
+            incomplete.append(row)
 
-    return {"commodity": "soja", "data": rows}
+    result = {"commodity": "soja", "data": complete}
+    if incomplete:
+        result["incomplete_dates"] = incomplete
+        result["_warnings"] = [{"warning": f"{len(incomplete)} date(s) missing farelo or oleo data", "count": len(incomplete)}]
+    return result

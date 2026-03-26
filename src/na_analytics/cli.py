@@ -65,7 +65,7 @@ def diagnostics():
             "output_sanity_checks": True,
             "structured_errors": True,
             "retry_on_network": True,
-            "partial_results": False,
+            "partial_results": True,
             "supports_resume": False,
         },
         "data_source": "https://github.com/FrancyJGLisboa/noticiasagricolas_etl",
